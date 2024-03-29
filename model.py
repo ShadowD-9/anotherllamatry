@@ -1,79 +1,81 @@
 import streamlit as st
-import os
+from streamlit_chat import message
+import tempfile
 from langchain.document_loaders.csv_loader import CSVLoader
-from langchain.text_splitter import RecursiveCharacterTextSplitter
 from langchain.embeddings import HuggingFaceEmbeddings
 from langchain.vectorstores import FAISS
 from langchain.llms import CTransformers
 from langchain.chains import ConversationalRetrievalChain
 
-def add_vertical_space(spaces=1):
-    for _ in range(spaces):
-        st.sidebar.markdown("---")
+DB_FAISS_PATH = 'vectorstore/db_faiss'
 
-def main():
-    st.set_page_config(page_title="Llama-2-GGML CSV Chatbot")
-    st.title("Llama-2-GGML CSV Chatbot")
+#Loading the model
+def load_llm():
+    # Load the locally downloaded model here
+    llm = CTransformers(
+        model = "llama-2-7b-chat.ggmlv3.q8_0.bin",
+        model_type="llama",
+        max_new_tokens = 512,
+        temperature = 0.5
+    )
+    return llm
 
-    st.sidebar.title("About")
-    st.sidebar.markdown('''
-        The Llama-2-GGML CSV Chatbot uses the **Llama-2-7B-Chat-GGML** model.
-        
-        ### 🔄Bot evolving, stay tuned!
-        
-        ## Useful Links 🔗
-        
-        - **Model:** [Llama-2-7B-Chat-GGML](https://huggingface.co/TheBloke/Llama-2-7B-Chat-GGML/tree/main) 📚
-        - **GitHub:** [ThisIs-Developer/Llama-2-GGML-CSV-Chatbot](https://github.com/ThisIs-Developer/Llama-2-GGML-CSV-Chatbot) 💬
-    ''')
+st.title("Chat with CSV using Llama2 🦙🦜")
 
-    DB_FAISS_PATH = "vectorstore/db_faiss"
-    TEMP_DIR = "temp"
 
-    if not os.path.exists(TEMP_DIR):
-        os.makedirs(TEMP_DIR)
+uploaded_file = st.sidebar.file_uploader("Upload your Data", type="csv")
 
-    uploaded_file = st.sidebar.file_uploader("Upload CSV file", type=['csv'])
+if uploaded_file :
+   #use tempfile because CSVLoader only accepts a file_path
+    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+        tmp_file.write(uploaded_file.getvalue())
+        tmp_file_path = tmp_file.name
 
-    add_vertical_space(1)
-    st.sidebar.write('Made by [@ThisIs-Developer](https://huggingface.co/ThisIs-Developer)')
+    loader = CSVLoader(file_path=tmp_file_path, encoding="utf-8", csv_args={
+                'delimiter': ','})
+    data = loader.load()
+    #st.json(data)
+    embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2',
+                                       model_kwargs={'device': 'cpu'})
 
-    if uploaded_file is not None:
-        file_path = os.path.join(TEMP_DIR, uploaded_file.name)
-        with open(file_path, "wb") as f:
-            f.write(uploaded_file.getvalue())
+    db = FAISS.from_documents(data, embeddings)
+    db.save_local(DB_FAISS_PATH)
+    llm = load_llm()
+    chain = ConversationalRetrievalChain.from_llm(llm=llm, retriever=db.as_retriever())
 
-        st.write(f"Uploaded file: {uploaded_file.name}")
-        st.write("Processing CSV file...")
+    def conversational_chat(query):
+        result = chain({"question": query, "chat_history": st.session_state['history']})
+        st.session_state['history'].append((query, result["answer"]))
+        return result["answer"]
 
-        loader = CSVLoader(file_path=file_path, encoding="utf-8", csv_args={'delimiter': ','})
-        data = loader.load()
+    if 'history' not in st.session_state:
+        st.session_state['history'] = []
 
-        text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=20)
-        text_chunks = text_splitter.split_documents(data)
+    if 'generated' not in st.session_state:
+        st.session_state['generated'] = ["Hello ! Ask me anything about " + uploaded_file.name + " 🤗"]
 
-        st.write(f"Total text chunks: {len(text_chunks)}")
+    if 'past' not in st.session_state:
+        st.session_state['past'] = ["Hey ! 👋"]
 
-        embeddings = HuggingFaceEmbeddings(model_name='sentence-transformers/all-MiniLM-L6-v2')
-        docsearch = FAISS.from_documents(text_chunks, embeddings)
-        docsearch.save_local(DB_FAISS_PATH)
+    #container for the chat history
+    response_container = st.container()
+    #container for the user's text input
+    container = st.container()
 
-        llm = CTransformers(model="models/llama-2-7b-chat.ggmlv3.q4_0.bin",
-                            model_type="llama",
-                            max_new_tokens=512,
-                            temperature=0.1)
+    with container:
+        with st.form(key='my_form', clear_on_submit=True):
 
-        qa = ConversationalRetrievalChain.from_llm(llm, retriever=docsearch.as_retriever())
+            user_input = st.text_input("Query:", placeholder="Talk to your csv data here (:", key='input')
+            submit_button = st.form_submit_button(label='Send')
 
-        st.write("Enter your query:")
-        query = st.text_input("Input Prompt:")
-        if query:
-            with st.spinner("Processing your question..."):
-                chat_history = []
-                result = qa({"question": query, "chat_history": chat_history})
-                st.write("Response:", result['answer'])
+        if submit_button and user_input:
+            output = conversational_chat(user_input)
 
-        os.remove(file_path)
+            st.session_state['past'].append(user_input)
+            st.session_state['generated'].append(output)
 
-if __name__ == "__main__":
-    main()
+    if st.session_state['generated']:
+        with response_container:
+            for i in range(len(st.session_state['generated'])):
+                message(st.session_state["past"][i], is_user=True, key=str(i) + '_user', avatar_style="big-smile")
+                message(st.session_state["generated"][i], key=str(i), avatar_style="thumbs")
