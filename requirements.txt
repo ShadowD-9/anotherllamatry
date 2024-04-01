@@ -5,3 +5,4 @@ langchain
 streamlit_chat
 sentence-transformers 
 faiss-gpu
+langchain-community
