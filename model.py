@@ -36,6 +36,7 @@ Suggest me a nutritional recipe for today as breakfast, lunch and dinner that gi
 DATA_PATH="data/"
 DB_FAISS_PATH="vectorstores/db_faiss"
 
+@st.cache_data
 def create_faiss_vector_db(data_path, db_faiss_path):
     """
     Create FAISS vector database from PDF documents.
@@ -74,6 +75,7 @@ def retrieval_qa_chain(llm, prompt, db):
                                            )
     return qa_chain
 
+@st.cache_resource
 def load_llm():
     llm = CTransformers(
         model="TheBloke/Llama-2-7B-Chat-GGML",
