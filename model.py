@@ -36,19 +36,30 @@ Suggest me a nutritional recipe for today as breakfast, lunch and dinner that gi
 DATA_PATH="data/"
 DB_FAISS_PATH="vectorstores/db_faiss"
 
-def create_vector_db():
+def create_faiss_vector_db(data_path, db_faiss_path):
+    """
+    Create FAISS vector database from PDF documents.
+
+    Parameters:
+    - data_path (str): Path to the directory containing PDF documents.
+    - db_faiss_path (str): Path to save the FAISS vector database.
+    """
     loader = CSVLoader(DATA_PATH, encoding="utf-8", csv_args={
                 'delimiter': ','})
-    documents =loader.load()
+    documents = loader.load()
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=500, chunk_overlap=50)
     texts = text_splitter.split_documents(documents)
 
     embeddings = HuggingFaceEmbeddings(model_name="sentence-transformers/all-MiniLM-L6-v2",
-    model_kwargs = {'device': 'cpu'})
+                                       model_kwargs={'device': 'cpu'})
 
-    db = FAISS.from_documents(texts, embeddings)
-    db.save_local(DB_FAISS_PATH)
-    
+    # Enable dangerous deserialization
+    db = FAISS.load_local(db_faiss_path, embeddings, allow_dangerous_deserialization=True)
+    if db is None:
+        db = FAISS.from_documents(texts, embeddings)
+        db.save_local(db_faiss_path)
+
+
 def set_custom_prompt():
     prompt = PromptTemplate(template=custom_prompt_template,
                             input_variables=['context', 'question'])
