@@ -1,8 +1,7 @@
 streamlit 
-streamlit_chat 
-langchain
-openai 
-faiss-cpu 
-tiktoken 
+ctransformers 
+transformers 
+langchain 
+streamlit_chat
 sentence-transformers 
-ctransformers
+faiss-gpu
