@@ -53,7 +53,7 @@ def create_faiss_vector_db(data_path, db_faiss_path):
                                        model_kwargs={'device': 'cpu'})
 
     # Enable dangerous deserialization
-    db = FAISS.load_local(db_faiss_path, embeddings, allow_dangerous_deserialization=True)
+    db = FAISS.load_local(DB_FAISS_PATH, embeddings, allow_dangerous_deserialization=True)
     if db is None:
         db = FAISS.from_documents(texts, embeddings)
         db.save_local(db_faiss_path)
