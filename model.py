@@ -8,7 +8,7 @@ from langchain.chains import RetrievalQA
 import tempfile
 from langchain.document_loaders.csv_loader import CSVLoader
 
-DB_FAISS_PATH = 'vectorstores/db_faiss'
+DB_FAISS_PATH = 'vectorstore/db_faiss'
 
 custom_prompt_template = """<s>[INST] <<SYS>>
 You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
