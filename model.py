@@ -8,8 +8,6 @@ from langchain.chains import RetrievalQA
 import tempfile
 from langchain.document_loaders.csv_loader import CSVLoader
 
-DB_FAISS_PATH = 'vectorstore/db_faiss'
-
 custom_prompt_template = """<s>[INST] <<SYS>>
 You are a helpful, respectful and honest assistant. Always answer as helpfully as possible, while being safe.  Your answers should not include any harmful, unethical, racist, sexist, toxic, dangerous, or illegal content. Please ensure that your responses are socially unbiased and positive in nature.
 
@@ -34,7 +32,7 @@ For Overall balance there are 2 subgroups, Macronutrient ratio (carbohydrate:pro
 Suggest me a nutritional recipe for today as breakfast, lunch and dinner that gives me the nutritional intake as said in DQI [/INST]
 """
 DATA_PATH="data/"
-DB_FAISS_PATH="vectorstores/db_faiss"
+DB_FAISS_PATH="vectorstore/db_faiss"
 
 @st.cache_data
 def create_faiss_vector_db(data_path, db_faiss_path):
